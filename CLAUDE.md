@@ -26,6 +26,12 @@ referencia, **solo lectura — nunca modificarlo**).
 > a `/topic/orders` y `/topic/catalog`. Endpoints: `GET /order/board`, `GET /order/kitchen-settings`,
 > `PATCH /order/{id}/status` y `POST /order/{id}/cancel` (ambos con `expectedVersion` → 409), `GET /order/pageable`.
 > `hibernate.default_batch_fetch_size=50` para el detalle del tablero.
+>
+> **Etapa 5 (arqueo y cierre de caja):** `V7__cash_close.sql`; `CashSessionSummary`; endpoints
+> `GET /cash-session/{id}/close-preview`, `POST /cash-session/{id}/close`, `GET /cash-session/{id}`,
+> `GET /cash-session/pageable`, `GET /cash-session/open-sessions` (ADMIN). Dueño o ADMIN (nota obligatoria si
+> cierra la de otro). **Bloqueo de la caja:** cobros/devoluciones/movimientos usan `findOpenByUserIdForUpdate`
+> (`PESSIMISTIC_FORCE_INCREMENT`, sin `JOIN FETCH`: Hibernate intentaría bloquear también `UserApp`, que no tiene `@Version`).
 > Las etapas se ejecutan **solo con aprobación explícita** del usuario (ver `docs/plans/001-arquitectura-inicial.md` §8).
 
 ## Documentación obligatoria

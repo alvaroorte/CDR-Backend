@@ -35,5 +35,8 @@ public class CashSessionPojo {
     private BigDecimal expectedCash;
     private List<CashMethodTotalPojo> salesByMethod = new ArrayList<>();
     private List<CashMovementPojo> movements = new ArrayList<>();
+    private List<CashSummaryPojo> summaries = new ArrayList<>();
+    private String closedBy;
+    private String closingNote;
     private Long version;
 }

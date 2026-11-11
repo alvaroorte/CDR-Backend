@@ -145,10 +145,13 @@ class CashServicesTest {
         @Mock CashMovementRepository cashMovementRepository;
         @Mock UserService userService;
         @Mock JwtService jwtService;
+        @Mock bo.cdr.app.appcash.data.CashSessionSummaryRepository summaryRepository;
+        @Mock PaymentMethodService paymentMethodService;
         final Clock clock = Clock.fixed(Instant.parse("2026-11-10T12:00:00Z"), ZoneId.of("UTC"));
 
         CashSessionServiceImpl service() {
-            return new CashSessionServiceImpl(cashSessionRepository, cashMovementRepository, new CashSessionMapper(),
+            return new CashSessionServiceImpl(cashSessionRepository, cashMovementRepository, summaryRepository,
+                    new CashSessionMapper(), new bo.cdr.app.appbase.domain.mapper.PagePojoMapper(), paymentMethodService,
                     userService, jwtService, clock);
         }
 
@@ -208,7 +211,7 @@ class CashServicesTest {
         @Test
         void registerMovement_requiresOpenSession() {
             when(jwtService.getCurrentUserId()).thenReturn(4);
-            when(cashSessionRepository.findOpenByUserId(4)).thenReturn(Optional.empty());
+            when(cashSessionRepository.findOpenByUserIdForUpdate(4)).thenReturn(Optional.empty());
             CashMovementDto dto = new CashMovementDto();
             dto.setType("EXPENSE");
             dto.setAmount(BigDecimal.TEN);

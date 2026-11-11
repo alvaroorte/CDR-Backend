@@ -507,3 +507,20 @@ Implementación de la Etapa 4:
   `CatalogEventPublisher`). `OrderStateMachine` en `apporder/domain/model`.
 - Endpoints: `GET /order/board`, `GET /order/kitchen-settings`, `PATCH /order/{id}/status`,
   `POST /order/{id}/cancel`, `GET /order/pageable`; `GET /order/{id}` incluye `statusHistory` y cancelación.
+
+### Decisiones resueltas en la Etapa 5 (2026-11-11)
+
+| # | Decisión |
+|---|---|
+| 4 | **Cierre con pedidos sin entregar: permitido con advertencia** (el preview los lista y la UI pide confirmar); siguen su curso |
+| — | **Arqueo de todos los medios**: el cajero declara efectivo contado y el total de cada otro medio; se guarda esperado, declarado y diferencia |
+| — | **El ADMIN puede cerrar la caja de otro** (cajas olvidadas) con arqueo y **nota obligatoria**; queda `closed_by` |
+| — | **Historial de cajas: ADMIN todas, CAJERO solo las suyas** |
+
+Implementación de la Etapa 5:
+- `V7__cash_close.sql`: `cash_sessions.closed_by`, tabla `cash_session_summaries` (CHECK difference = declarado − esperado), permisos CAJERO.
+- Endpoints: `GET /cash-session/{id}/close-preview`, `POST /cash-session/{id}/close`, `GET /cash-session/{id}`,
+  `GET /cash-session/pageable`, `GET /cash-session/open-sessions` (solo ADMIN).
+- Concurrencia: cada cobro/devolución/movimiento toma la caja con `PESSIMISTIC_FORCE_INCREMENT` (FOR UPDATE + versión):
+  los cobros del mismo cajero se serializan sin fallar; el cierre toma `PESSIMISTIC_WRITE` y compara `expectedVersion`,
+  así un arqueo hecho antes de un cobro recibe 409 y un cobro que espera a un cierre ya no encuentra la caja abierta.

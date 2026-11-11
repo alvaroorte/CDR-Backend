@@ -3,7 +3,9 @@ package bo.cdr.app.appcash.domain.mapper;
 import bo.cdr.app.appcash.domain.entity.CashSession;
 import bo.cdr.app.appcash.presentation.response.pojo.CashMethodTotalPojo;
 import bo.cdr.app.appcash.presentation.response.pojo.CashMovementPojo;
+import bo.cdr.app.appcash.presentation.response.pojo.CashSessionListPojo;
 import bo.cdr.app.appcash.presentation.response.pojo.CashSessionPojo;
+import bo.cdr.app.appcash.presentation.response.pojo.CashSummaryPojo;
 import bo.cdr.app.common.MoneyUtil;
 import bo.cdr.app.common.enums.CashMovementTypeEnum;
 import bo.cdr.app.util.constants.PaymentMethodCodes;
@@ -29,6 +31,8 @@ public class CashSessionMapper {
         pojo.setOpeningAmount(session.getOpeningAmount());
         pojo.setOpenedAt(session.getOpenedAt());
         pojo.setClosedAt(session.getClosedAt());
+        pojo.setClosedBy(session.getClosedBy());
+        pojo.setClosingNote(session.getClosingNote());
         pojo.setVersion(session.getVersion());
         pojo.setMovements(movements);
 
@@ -72,5 +76,42 @@ public class CashSessionMapper {
                         MoneyUtil.round(t.amount())))
                 .toList());
         return pojo;
+    }
+
+    /**
+     * Esperado por medio de pago (skill cdr-order-management §10): efectivo = apertura + ventas −
+     * devoluciones + ingresos − egresos (los movimientos sin medio son efectivo); otros medios = ventas − devoluciones.
+     */
+    public Map<Integer, BigDecimal> expectedByMethod(BigDecimal openingAmount, List<CashMovementPojo> movements,
+                                                     Integer cashMethodId) {
+        Map<Integer, BigDecimal> expected = new LinkedHashMap<>();
+        expected.put(cashMethodId, openingAmount);
+        for (CashMovementPojo m : movements) {
+            Integer methodId = m.getPaymentMethodId() == null ? cashMethodId : m.getPaymentMethodId();
+            BigDecimal signed = switch (m.getType()) {
+                case SALE, INCOME -> m.getAmount();
+                case REFUND, EXPENSE -> m.getAmount().negate();
+                case OPENING -> BigDecimal.ZERO;   // ya está en openingAmount
+            };
+            expected.merge(methodId, signed, BigDecimal::add);
+        }
+        expected.replaceAll((id, amount) -> MoneyUtil.round(amount));
+        return expected;
+    }
+
+    /** Fila del historial; los totales del arqueo solo existen si la caja está cerrada. */
+    public CashSessionListPojo toListPojo(CashSession session, List<CashSummaryPojo> summaries) {
+        boolean closed = !summaries.isEmpty();
+        BigDecimal expected = closed ? sum(summaries.stream().map(CashSummaryPojo::expectedAmount).toList()) : null;
+        BigDecimal declared = closed ? sum(summaries.stream().map(CashSummaryPojo::declaredAmount).toList()) : null;
+        BigDecimal difference = closed ? sum(summaries.stream().map(CashSummaryPojo::difference).toList()) : null;
+        return new CashSessionListPojo(session.getId(), session.getUser().getId(), session.getUser().getUsername(),
+                session.getUser().getFullName(), session.getStatus(), session.getStatus().getLabel(),
+                session.getOpenedAt(), session.getClosedAt(), session.getClosedBy(), session.getOpeningAmount(),
+                expected, declared, difference, session.getVersion());
+    }
+
+    private static BigDecimal sum(List<BigDecimal> values) {
+        return MoneyUtil.round(values.stream().reduce(BigDecimal.ZERO, BigDecimal::add));
     }
 }

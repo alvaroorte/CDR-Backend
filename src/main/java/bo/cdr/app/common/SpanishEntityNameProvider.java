@@ -26,6 +26,7 @@ public class SpanishEntityNameProvider {
     NAME_MAP.put("Parameter", "Parámetro");
     NAME_MAP.put("CashSession", "Caja");
     NAME_MAP.put("CashMovement", "Movimiento de caja");
+    NAME_MAP.put("CashSessionSummary", "Arqueo de caja");
     NAME_MAP.put("Payment", "Pago");
     NAME_MAP.put("Order", "Pedido");
     NAME_MAP.put("OrderItem", "Detalle del pedido");

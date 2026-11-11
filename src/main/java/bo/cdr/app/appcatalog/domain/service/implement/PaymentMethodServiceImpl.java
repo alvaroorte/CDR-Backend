@@ -69,4 +69,21 @@ public class PaymentMethodServiceImpl extends CRUDServiceImpl<PaymentMethod, Int
             throw new DuplicateException("Medio de pago", "Nombre", name);
         }
     }
+
+    @Override
+    public PaymentMethod getCashMethod() {
+        return paymentMethodRepository.findByCodeIgnoreCase(bo.cdr.app.util.constants.PaymentMethodCodes.CASH)
+                .orElseThrow(() -> new EntityNotFoundException("Medio de pago", "Código",
+                        bo.cdr.app.util.constants.PaymentMethodCodes.CASH));
+    }
+
+    @Override
+    public List<PaymentMethod> getActiveIncluding(java.util.Collection<Integer> ids) {
+        java.util.Map<Integer, PaymentMethod> result = new java.util.LinkedHashMap<>();
+        paymentMethodRepository.findAllByActiveIsTrueOrderByNameAsc().forEach(m -> result.put(m.getId(), m));
+        if (ids != null && !ids.isEmpty()) {
+            paymentMethodRepository.findAllById(ids).forEach(m -> result.putIfAbsent(m.getId(), m));
+        }
+        return List.copyOf(result.values());
+    }
 }

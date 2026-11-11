@@ -15,6 +15,8 @@ public interface PaymentMethodRepository extends GenericRepository<PaymentMethod
 
     boolean existsByCodeIgnoreCase(String code);
 
+    Optional<PaymentMethod> findByCodeIgnoreCase(String code);
+
     boolean existsByNameIgnoreCaseAndActiveIsTrue(String name);
 
     boolean existsByNameIgnoreCaseAndActiveIsTrueAndIdNot(String name, Integer id);

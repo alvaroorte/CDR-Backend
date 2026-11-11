@@ -12,4 +12,8 @@ public interface PaymentMethodService extends CRUDService<PaymentMethod, Integer
     PaymentMethod update(Integer id, PaymentMethodDto dto);
     List<PaymentMethodPojo> getAllPaymentMethodPojo();
     PaymentMethodPojo getPaymentMethodPojoById(Integer id);
+    /** Medio de efectivo (código EFECTIVO): apertura, ingresos y egresos de caja se cuentan en él. */
+    PaymentMethod getCashMethod();
+    /** Medios activos más los indicados (aunque estén inactivos), para el arqueo de una caja. */
+    List<PaymentMethod> getActiveIncluding(java.util.Collection<Integer> ids);
 }

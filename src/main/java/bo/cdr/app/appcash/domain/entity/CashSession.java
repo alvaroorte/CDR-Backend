@@ -47,6 +47,9 @@ public class CashSession extends Base {
     @Column(name = "closing_note", length = 500)
     private String closingNote;
 
+    @Column(name = "closed_by", length = 150)
+    private String closedBy;
+
     @Version
     private Long version;
 
