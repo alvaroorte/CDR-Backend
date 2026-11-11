@@ -32,6 +32,13 @@ referencia, **solo lectura — nunca modificarlo**).
 > `GET /cash-session/pageable`, `GET /cash-session/open-sessions` (ADMIN). Dueño o ADMIN (nota obligatoria si
 > cierra la de otro). **Bloqueo de la caja:** cobros/devoluciones/movimientos usan `findOpenByUserIdForUpdate`
 > (`PESSIMISTIC_FORCE_INCREMENT`, sin `JOIN FETCH`: Hibernate intentaría bloquear también `UserApp`, que no tiene `@Version`).
+>
+> **Etapa 6 (reportes + Excel):** módulo `appreport` sin migración. `ReportRepository` (Spring Data `Repository<Order,…>`
+> con SQL nativo + CTE y proyecciones; filtros opcionales con centinela `0`/`''` para no enlazar nulos sin tipo; alias
+> entre comillas para el camelCase). Endpoints `GET /report/sales` (`groupBy`=DAY|WEEK|MONTH), `/report/products`,
+> `/report/payments`, `/report/operations` y `GET /report/export?report=SALES|PRODUCTS|PAYMENTS|OPERATIONS` → `AttachmentPojo`
+> (`name`, `file` base64, `typeFile`=EXCEL), generado con **Apache POI** (`ReportExcelServiceImpl`). Rango `dateFrom`/`dateTo`
+> (fecha de negocio) obligatorio. **Solo ADMIN** (decisión aprobada): ninguna migración da permisos de `/report` a otros roles.
 > Las etapas se ejecutan **solo con aprobación explícita** del usuario (ver `docs/plans/001-arquitectura-inicial.md` §8).
 
 ## Documentación obligatoria
@@ -55,7 +62,8 @@ referencia, **solo lectura — nunca modificarlo**).
 - JJWT 0.13 · Caffeine (rate limit login) · Lombok · springdoc-openapi
 - **Jackson 3**: imports `tools.jackson.*` (anotaciones siguen en `com.fasterxml.jackson.annotation.*`)
 - **NUEVO vs referencia:** Flyway (`flyway-core` + `flyway-database-postgresql`), `ddl-auto=validate`
-- **Quitado vs referencia:** LDAP, reCAPTCHA, licencia, mail/Thymeleaf, Firebase, Jasper/POI, ModelMapper
+- **Quitado vs referencia:** LDAP, reCAPTCHA, licencia, mail/Thymeleaf, Firebase, Jasper, ModelMapper
+- **Etapa 6:** `poi-ooxml` 5.4.1 (la referencia usa 5.2.3; se toma la versión con parches de seguridad). Sin PDF en v1.
 
 Paquete base: `bo.cdr.app`. Context path `/cdr`, puerto `8086`.
 Zona horaria `America/La_Paz`.
@@ -154,3 +162,7 @@ Transversales: `config/`, `common/` (enums, validators, `MoneyUtil`, `SpanishEnt
 | — | Superar el tope de descuento del CAJERO → **400** (`NotAllowedException`), no 403 | El 403 del frontend significa "sin permiso de ruta"; aquí el mensaje explica el tope |
 | `WebSocketConfig.setAllowedOriginPatterns(String)` | Se separa la propiedad por comas | Permite varios orígenes en qa/prod |
 | — | `expectedVersion` distinto del actual → `ConflictException` (409) antes de tocar nada; `@Version` cubre la carrera restante | Mensaje claro con el código del pedido |
+| Un endpoint por reporte con `reportCode`/`reportType` y Jasper | 4 endpoints de datos (uno por grupo de reportes, con secciones) + `GET /report/export?report=` (POI) | La pantalla muestra tarjetas y tablas; el Excel sale de los mismos datos |
+| `AttachmentRecord` en `response/record` | `AttachmentPojo` (record) en `response/pojo` | Estructura única; mismo contrato JSON |
+| Tipo de reporte en la ruta | Query param `report` | El permiso se arma con la URL sin ids numéricos; un segmento de texto variable generaría un código distinto por reporte |
+| `autoSizeColumn` de POI | Ancho de columna calculado por longitud del texto | Evita depender de fuentes AWT en servidores sin entorno gráfico |

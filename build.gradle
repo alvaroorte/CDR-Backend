@@ -39,6 +39,9 @@ dependencies {
 
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
 
+	// Etapa 6: exportación de reportes a Excel (misma librería que la referencia, versión con parches de seguridad).
+	implementation 'org.apache.poi:poi-ooxml:5.4.1'
+
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 

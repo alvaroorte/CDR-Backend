@@ -524,3 +524,21 @@ Implementación de la Etapa 5:
 - Concurrencia: cada cobro/devolución/movimiento toma la caja con `PESSIMISTIC_FORCE_INCREMENT` (FOR UPDATE + versión):
   los cobros del mismo cajero se serializan sin fallar; el cierre toma `PESSIMISTIC_WRITE` y compara `expectedVersion`,
   así un arqueo hecho antes de un cobro recibe 409 y un cobro que espera a un cierre ya no encuentra la caja abierta.
+
+### Decisiones resueltas en la Etapa 6 (2026-11-11)
+
+| # | Decisión |
+|---|---|
+| 5 | **Exportación: Excel generado en el backend con Apache POI** (base64, como `AttachmentRecord` de la referencia). Sin PDF en v1 |
+| — | **Pantalla: tarjetas de totales + tablas PrimeNG**, sin librería de gráficos |
+| — | **Acceso: solo ADMIN** |
+| — | **Reportes v1: los cuatro grupos** — ventas por período y modalidad; productos y categorías; medios de pago y cajas; cajeros, estados, descuentos y cancelaciones |
+
+Implementación de la Etapa 6 (sin migración):
+- `appreport`: `ReportRepository` (SQL nativo + CTE sobre fotografías), `ReportServiceImpl` (validación, etiquetas,
+  participaciones %, ticket promedio con `MoneyUtil`), `ReportExcelServiceImpl` (una hoja por sección, importes numéricos `#,##0.00`).
+- Endpoints: `GET /report/sales|products|payments|operations` y `GET /report/export?report=`; filtros `dateFrom`/`dateTo`
+  (obligatorios, fecha de negocio), `groupBy`, `userId` (dueño de la caja), `serviceType`, `categoryId` (productos), `paymentMethodId` (pagos).
+- Definiciones: Bruto = Σ subtotal, Neto = Σ total, Pagado = pagos PAID, Devuelto = pagos REFUNDED (pedidos cancelados);
+  el importe por producto es la suma de líneas **antes** del descuento general (no se reparte por línea).
+- Cajas del reporte: las abiertas en el rango (fecha de `opened_at`); arqueo en null si siguen abiertas.
