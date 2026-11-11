@@ -1,6 +1,6 @@
 package bo.cdr.app.appsecurity.presentation.controller;
 
-import bo.cdr.app.appsecurity.domain.service.UserService;
+import bo.cdr.app.appsecurity.domain.service.interfaces.UserService;
 import bo.cdr.app.appsecurity.presentation.response.pojo.RolePojo;
 import bo.cdr.app.appsecurity.presentation.response.pojo.UserInfoPojo;
 import bo.cdr.app.exception.EntityNotFoundException;

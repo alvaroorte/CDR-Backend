@@ -1,7 +1,7 @@
 package bo.cdr.app.appsecurity.auth.jwt;
 
 import bo.cdr.app.appsecurity.auth.service.CustomUserDetails;
-import bo.cdr.app.appsecurity.domain.service.UserService;
+import bo.cdr.app.appsecurity.domain.service.interfaces.UserService;
 import bo.cdr.app.util.RequestMatcherUtil;
 import bo.cdr.app.util.constants.RoleCodes;
 import jakarta.servlet.FilterChain;

@@ -4,7 +4,28 @@ Guía para Claude Code al trabajar en este repositorio. Sistema de atención y g
 presenciales de una cafetería. **Replica la arquitectura de `../ticket-backend`** (proyecto de
 referencia, **solo lectura — nunca modificarlo**).
 
-> **Estado:** Etapa 1 completada (infraestructura + autenticación). Nombre comercial: **Ciudad de Refugio**.
+> **Estado:** Etapas 1 (infraestructura + autenticación) y 2 (administración: usuarios, roles/permisos,
+> categorías, productos, adicionales, números de mesa, medios de pago, parámetros) completadas.
+> Nombre comercial: **Ciudad de Refugio**.
+>
+> **Endpoints de la Etapa 2:** `/category` (+`/select`), `/product` (+`PATCH /{id}/availability`, único
+> permitido al CAJERO junto a `GET /product`), `/addon` (+`/select`), `/table-marker`, `/payment-method`,
+> `/parameter` (solo GET y PUT del valor), `/users` (+`PATCH /{id}/password`), `/roles` (+`/select`,
+> `GET|PUT /{id}/permissions`), `/permission` (solo lectura). `DELETE` = desactivar (borrado lógico).
+>
+> **Etapa 3 (caja + POS + pedidos):** `V5__orders_and_cash.sql`; módulos `appcash` (caja, movimientos,
+> pagos) y `apporder` (pedido, detalle con fotografías, historial, `OrderPricingService`).
+> Endpoints: `GET /cash-session/current` (204 sin caja), `POST /cash-session/open`, `POST /cash-session/movement`,
+> `GET /pos/catalog`, `GET /table-marker/availability`, `POST /order/quote`, `POST /order`, `GET /order/{id}`
+> (todos permitidos al CAJERO por V5). Código de pedido **diario** (`order_daily_sequences`, UPSERT atómico);
+> total 0 rechazado; adorno ocupado → 409 (pre-chequeo + índice `ux_orders_marker_open`).
+>
+> **Etapa 4 (tiempo real + estados + cancelación + historial):** `V6__kitchen_and_order_tracking.sql`;
+> `config/WebSocketConfig` + `WebSocketAuthInterceptor` (JWT en CONNECT, rol en SUBSCRIBE, SEND rechazado);
+> `OrderStateMachine` (con retroceso de un paso para COCINA/ADMIN); eventos `@TransactionalEventListener(AFTER_COMMIT)`
+> a `/topic/orders` y `/topic/catalog`. Endpoints: `GET /order/board`, `GET /order/kitchen-settings`,
+> `PATCH /order/{id}/status` y `POST /order/{id}/cancel` (ambos con `expectedVersion` → 409), `GET /order/pageable`.
+> `hibernate.default_batch_fetch_size=50` para el detalle del tablero.
 > Las etapas se ejecutan **solo con aprobación explícita** del usuario (ver `docs/plans/001-arquitectura-inicial.md` §8).
 
 ## Documentación obligatoria
@@ -117,3 +138,13 @@ Transversales: `config/`, `common/` (enums, validators, `MoneyUtil`, `SpanishEnt
 | `DataIntegrityViolationException` → 400 | → 409 (+ `ObjectOptimisticLockingFailureException` → 409) | Conflictos de concurrencia/unicidad |
 | Paquetes `appsecurity/repository` | `appsecurity/data` | Estructura única |
 | `open-in-view` activo (por defecto) | `spring.jpa.open-in-view=false` + `JOIN FETCH` | Evita consultas perezosas ocultas en la vista |
+| Servicios de `appsecurity` planos | `domain/service/interfaces` + `implement` como el resto | Estructura única (corregido en la Etapa 2) |
+| Un rol inactivo seguía otorgándose | Roles inactivos no se incluyen en el JWT ni en `/users/me` | Desactivar un rol debe quitar el acceso |
+| Parámetros con CRUD completo | Solo se edita el valor (validado por `value_type`); los define una migración | El código depende de sus códigos |
+| Sin conflicto de negocio tipado | `ConflictException` → 409 con mensaje específico (adorno en uso, caja ya abierta) | El usuario puede resolverlo eligiendo otra opción |
+| — | `domain/model/` para objetos de dominio internos sin tabla (`PricedOrder`, `ResolvedPayment`) | Resultado del cálculo / validación que no es entidad ni DTO |
+| `@Pojo` en todas las respuestas | Las respuestas `record` (p. ej. `PosCatalogPojo`, `CashMethodTotalPojo`) **no** llevan `@Pojo` | `@Pojo` es un `@Component`: Spring no puede instanciar un record sin constructor vacío |
+| — | `Payment.orderId` / `CashMovement.orderId` como columna simple (FK en BD, sin relación JPA) | Evita acoplar `appcash` con la entidad `Order` |
+| — | Superar el tope de descuento del CAJERO → **400** (`NotAllowedException`), no 403 | El 403 del frontend significa "sin permiso de ruta"; aquí el mensaje explica el tope |
+| `WebSocketConfig.setAllowedOriginPatterns(String)` | Se separa la propiedad por comas | Permite varios orígenes en qa/prod |
+| — | `expectedVersion` distinto del actual → `ConflictException` (409) antes de tocar nada; `@Version` cubre la carrera restante | Mensaje claro con el código del pedido |

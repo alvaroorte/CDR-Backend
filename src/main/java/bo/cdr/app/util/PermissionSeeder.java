@@ -1,7 +1,7 @@
 package bo.cdr.app.util;
 
 import bo.cdr.app.appsecurity.domain.entity.Permission;
-import bo.cdr.app.appsecurity.domain.service.PermissionService;
+import bo.cdr.app.appsecurity.domain.service.interfaces.PermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;

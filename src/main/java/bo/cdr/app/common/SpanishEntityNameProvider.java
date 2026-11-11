@@ -18,6 +18,19 @@ public class SpanishEntityNameProvider {
     NAME_MAP.put("UserRole", "Rol de usuario");
     NAME_MAP.put("RolePermission", "Permiso de rol");
     NAME_MAP.put("RefreshToken", "Token de renovación");
+    NAME_MAP.put("Category", "Categoría");
+    NAME_MAP.put("Product", "Producto");
+    NAME_MAP.put("Addon", "Adicional");
+    NAME_MAP.put("TableMarker", "Número de mesa");
+    NAME_MAP.put("PaymentMethod", "Medio de pago");
+    NAME_MAP.put("Parameter", "Parámetro");
+    NAME_MAP.put("CashSession", "Caja");
+    NAME_MAP.put("CashMovement", "Movimiento de caja");
+    NAME_MAP.put("Payment", "Pago");
+    NAME_MAP.put("Order", "Pedido");
+    NAME_MAP.put("OrderItem", "Detalle del pedido");
+    NAME_MAP.put("OrderItemAddon", "Adicional del detalle");
+    NAME_MAP.put("OrderStatusHistory", "Historial del pedido");
   }
 
   private SpanishEntityNameProvider() {}

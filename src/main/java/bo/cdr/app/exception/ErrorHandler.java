@@ -125,7 +125,7 @@ public class ErrorHandler {
     return ResponseEntity.status(status).contentType(MediaType.APPLICATION_JSON).body(response);
   }
 
-  @ExceptionHandler(DuplicateException.class)
+  @ExceptionHandler({DuplicateException.class, ConflictException.class})
   public  ResponseEntity<ErrorResponse> handlerDuplicateException(HttpServletRequest req, Exception ex){
     HttpStatus status = HttpStatus.CONFLICT;
     ErrorResponse response = new ErrorResponse(status.value(), status.name(), ex.getMessage(), req.getRequestURI());

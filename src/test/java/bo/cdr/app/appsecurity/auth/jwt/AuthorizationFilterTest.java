@@ -1,7 +1,7 @@
 package bo.cdr.app.appsecurity.auth.jwt;
 
 import bo.cdr.app.appsecurity.auth.service.CustomUserDetails;
-import bo.cdr.app.appsecurity.domain.service.UserService;
+import bo.cdr.app.appsecurity.domain.service.interfaces.UserService;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

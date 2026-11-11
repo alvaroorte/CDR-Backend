@@ -465,3 +465,45 @@ order ─< order_status_history ;  cash_session ─< cash_movement ; cash_sessio
 | 16 | Dev local: PostgreSQL `localhost:5432`, base `cdr_db`; URLs de dev/qa/prod siguen pendientes |
 | 17 | ADMIN inicial creado en el primer arranque desde `APP_ADMIN_INITIAL_PASSWORD` |
 | — | Login por **nombre de usuario** (no email); email opcional |
+
+### Decisiones resueltas en la Etapa 2 (2026-11-10)
+
+| # | Decisión |
+|---|---|
+| 2 | Descuento máximo del CAJERO **50 %**; **todo descuento requiere motivo** (`DISCOUNT_REASON_REQUIRED_ABOVE_PERCENT = 0`). Ambos editables en Parámetros |
+| 7 | Medios de pago iniciales: **EFECTIVO** (calcula vuelto) y **QR** (exige referencia) |
+| 13 | Imágenes base64 de hasta **1 MB** (validado en frontend y backend) |
+| 15 | El **CAJERO puede marcar productos agotados/disponibles** (`PATCH /product/{id}/availability`); el resto del CRUD de productos es solo ADMIN |
+
+### Decisiones resueltas en la Etapa 3 (2026-11-10)
+
+| # | Decisión |
+|---|---|
+| 9 | **Pedido con total 0: se rechaza** (400 "El total del pedido debe ser mayor a 0"), también para ADMIN |
+| 3 | **Código del pedido diario**: `#001` reinicia cada día (fecha de negocio en America/La_Paz). Correlativo atómico con UPSERT sobre `order_daily_sequences`; único por `(business_date, code)` |
+| — | **Catálogo del POS en una sola llamada con imágenes** (`GET /pos/catalog`): categorías y productos activos (agotados incluidos y marcados), adicionales con precio, medios de pago activos y reglas de descuento |
+
+Implementación de la Etapa 3 (detalle en `cdr-backend/CLAUDE.md`):
+- `V5__orders_and_cash.sql`: `cash_sessions`, `order_daily_sequences`, `orders`, `order_items`,
+  `order_item_addons`, `order_status_history`, `payments`, `cash_movements` + permisos del CAJERO.
+- `GET /cash-session/current` (204 sin caja), `POST /cash-session/open`, `POST /cash-session/movement`
+  (solo INCOME/EXPENSE), `GET /pos/catalog`, `GET /table-marker/availability`, `POST /order/quote`,
+  `POST /order`, `GET /order/{id}`.
+- Movimientos OPENING/INCOME/EXPENSE sin medio de pago = efectivo; SALE/REFUND llevan medio de pago.
+- `ORDER_CREATED` por WebSocket queda para la Etapa 4.
+
+### Decisiones resueltas en la Etapa 4 (2026-11-11)
+
+| # | Decisión |
+|---|---|
+| 6 | **COCINA y ADMIN pueden retroceder un paso** (LISTO → EN_PREPARACION → PENDIENTE); queda en el historial. ENTREGADO y CANCELADO siguen siendo finales |
+| 14 | **Demoras de cocina como parámetros editables** (carpeta COCINA): `KITCHEN_DELAY_WARNING_MINUTES = 10` (amarillo) y `KITCHEN_DELAY_CRITICAL_MINUTES = 20` (rojo), contados desde el registro |
+| — | **Pantalla Pedidos = seguimiento en vivo + historial** paginado con filtros (fechas, estado, modalidad, código) y detalle con línea de tiempo |
+
+Implementación de la Etapa 4:
+- `V6__kitchen_and_order_tracking.sql`: carpeta KITCHEN + 2 parámetros; permisos COCINA (`GET /order/board`,
+  `GET /order/kitchen-settings`, `PATCH /order/{id}/status`) y CAJERO (board, status, cancel, pageable).
+- WebSocket `/ws-cdr` (SockJS) con `WebSocketAuthInterceptor`; eventos tras el commit (`OrderEventPublisher`,
+  `CatalogEventPublisher`). `OrderStateMachine` en `apporder/domain/model`.
+- Endpoints: `GET /order/board`, `GET /order/kitchen-settings`, `PATCH /order/{id}/status`,
+  `POST /order/{id}/cancel`, `GET /order/pageable`; `GET /order/{id}` incluye `statusHistory` y cancelación.
