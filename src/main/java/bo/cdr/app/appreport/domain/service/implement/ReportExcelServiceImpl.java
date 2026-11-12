@@ -15,7 +15,8 @@ import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -41,6 +42,7 @@ public class ReportExcelServiceImpl implements ReportExcelService {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     private static final int MAX_COLUMN_CHARS = 60;
+    private static final int ROWS_IN_MEMORY = 200;
 
     private final Clock clock;
 
@@ -62,7 +64,6 @@ public class ReportExcelServiceImpl implements ReportExcelService {
                 row("Neto", s.net()),
                 row("Pagado (cobros vigentes)", s.paid()),
                 row("Devuelto (pedidos cancelados)", s.refunded()),
-                row("Ticket promedio", s.averageTicket()),
                 row("Pedidos cancelados", s.cancelledCount()),
                 row("Importe cancelado", s.cancelledAmount()));
         List<List<Object>> periods = r.periods().stream()
@@ -147,8 +148,12 @@ public class ReportExcelServiceImpl implements ReportExcelService {
 
     // ------------------------------------------------------------------ escritura
 
+    /**
+     * SXSSF (Etapa 7): escribe por bloques de {@value #ROWS_IN_MEMORY} filas en lugar de mantener todo el
+     * libro en memoria; con un año de descuentos/cancelaciones el XSSF completo era el cuello de botella.
+     */
     private byte[] write(LocalDate from, LocalDate to, Table... tables) {
-        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+        try (SXSSFWorkbook workbook = new SXSSFWorkbook(ROWS_IN_MEMORY); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Styles styles = new Styles(workbook);
             String range = "Período: " + DATE.format(from) + " al " + DATE.format(to);
             String generated = "Generado: " + DATE_TIME.format(LocalDateTime.now(clock));
@@ -260,7 +265,7 @@ public class ReportExcelServiceImpl implements ReportExcelService {
         final CellStyle integer;
         final CellStyle integerBold;
 
-        Styles(XSSFWorkbook workbook) {
+        Styles(Workbook workbook) {
             DataFormat format = workbook.createDataFormat();
             Font boldFont = workbook.createFont();
             boldFont.setBold(true);

@@ -173,7 +173,9 @@ Mensajes desde `notification-messages.properties` (`Messages.getProperty(...)`) 
 
 ## 6. Configuración y perfiles
 
-- `application.properties` + `application-{dev,test,qa,prod}.properties` (la referencia tiene además `etr`).
+- `application.properties` + `application-{dev,prod}.properties`: **solo dos entornos** (la referencia tiene además
+  test/qa/etr). `prod` usa `server.forward-headers-strategy=native` (IP real del cliente detrás del proxy, para el límite
+  de intentos de login) y no expone detalles de error.
 - `spring.jpa.hibernate.ddl-auto=validate` en **todos** los perfiles; `spring.flyway.enabled=true`.
 - `spring.jackson.time-zone=America/La_Paz`; `server.servlet.context-path=/cdr`; `server.port=8086`.
 - `app.cors.allowed-origins`, `app.jwt.secret=${APP_JWT_SECRET}`, `spring.datasource.password=${DB_PASSWORD}`.

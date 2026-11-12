@@ -33,6 +33,14 @@ referencia, **solo lectura — nunca modificarlo**).
 > cierra la de otro). **Bloqueo de la caja:** cobros/devoluciones/movimientos usan `findOpenByUserIdForUpdate`
 > (`PESSIMISTIC_FORCE_INCREMENT`, sin `JOIN FETCH`: Hibernate intentaría bloquear también `UserApp`, que no tiene `@Version`).
 >
+> **Etapa 7 (endurecimiento):** solo dos entornos, **dev (localhost) y prod** (se quitaron los perfiles qa/test).
+> Tests de integración con **Testcontainers** (`src/test/java/bo/cdr/app/integration`, `@Tag("integration")`):
+> `MigrationIT` (Flyway desde cero + índices de concurrencia) y `ConcurrencyIT` (mesa duplicada, código diario, cobros
+> paralelos, doble apertura, cierre vs cobro, dos cocineros, entregar vs cancelar). **No** corren en `gradlew test` (ni en
+> el build de Docker): se lanzan con `gradlew integrationTest` y requieren Docker. Seguridad: `JwtAuthenticationFilter` lee
+> de la BD en cada petición si el usuario sigue activo y sus roles vigentes (el JWT solo identifica). Excel con
+> `SXSSFWorkbook`. Rendimiento medido con ~110 mil pedidos (1 año): sin índices nuevos (ver plan 001, Etapa 7).
+>
 > **Etapa 6 (reportes + Excel):** módulo `appreport` sin migración. `ReportRepository` (Spring Data `Repository<Order,…>`
 > con SQL nativo + CTE y proyecciones; filtros opcionales con centinela `0`/`''` para no enlazar nulos sin tipo; alias
 > entre comillas para el camelCase). Endpoints `GET /report/sales` (`groupBy`=DAY|WEEK|MONTH), `/report/products`,
@@ -75,11 +83,12 @@ Zona horaria `America/La_Paz`.
 .\gradlew.bat bootRun                    # perfil dev por defecto → http://localhost:8086/cdr
 .\gradlew.bat test                       # BUILD SUCCESSFUL obligatorio antes de commitear
 .\gradlew.bat test --tests "bo.cdr.app.appsecurity.presentation.controller.AuthControllerTest"
+.\gradlew.bat integrationTest            # Testcontainers: PostgreSQL 15 en Docker (Docker Desktop encendido)
 ```
 
 **Dev local:** PostgreSQL en `localhost:5432`, base `cdr_db` (dedicada a este proyecto). Los valores
 por defecto de `application-dev.properties` (BD, JWT, admin inicial) son **solo para desarrollo**;
-qa/prod exigen las variables `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_JWT_SECRET`,
+prod exige las variables `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_JWT_SECRET`,
 `APP_CORS_ALLOWED_ORIGINS` y, en el primer arranque, `APP_ADMIN_INITIAL_PASSWORD`.
 `AdminBootstrap` crea el usuario `admin` (rol ADMIN) si no existe ningún ADMIN activo.
 
@@ -160,9 +169,13 @@ Transversales: `config/`, `common/` (enums, validators, `MoneyUtil`, `SpanishEnt
 | `@Pojo` en todas las respuestas | Las respuestas `record` (p. ej. `PosCatalogPojo`, `CashMethodTotalPojo`) **no** llevan `@Pojo` | `@Pojo` es un `@Component`: Spring no puede instanciar un record sin constructor vacío |
 | — | `Payment.orderId` / `CashMovement.orderId` como columna simple (FK en BD, sin relación JPA) | Evita acoplar `appcash` con la entidad `Order` |
 | — | Superar el tope de descuento del CAJERO → **400** (`NotAllowedException`), no 403 | El 403 del frontend significa "sin permiso de ruta"; aquí el mensaje explica el tope |
-| `WebSocketConfig.setAllowedOriginPatterns(String)` | Se separa la propiedad por comas | Permite varios orígenes en qa/prod |
+| `WebSocketConfig.setAllowedOriginPatterns(String)` | Se separa la propiedad por comas | Permite varios orígenes en prod |
 | — | `expectedVersion` distinto del actual → `ConflictException` (409) antes de tocar nada; `@Version` cubre la carrera restante | Mensaje claro con el código del pedido |
 | Un endpoint por reporte con `reportCode`/`reportType` y Jasper | 4 endpoints de datos (uno por grupo de reportes, con secciones) + `GET /report/export?report=` (POI) | La pantalla muestra tarjetas y tablas; el Excel sale de los mismos datos |
 | `AttachmentRecord` en `response/record` | `AttachmentPojo` (record) en `response/pojo` | Estructura única; mismo contrato JSON |
 | Tipo de reporte en la ruta | Query param `report` | El permiso se arma con la URL sin ids numéricos; un segmento de texto variable generaría un código distinto por reporte |
+| Roles leídos del JWT durante toda su vigencia (12 h) | `JwtAuthenticationFilter` consulta usuario activo + roles vigentes en cada petición (también en STOMP CONNECT) | Desactivar o degradar a un ADMIN surte efecto inmediato |
+| Perfiles dev/test/qa/etr/prod | Solo dev y prod | No existe entorno QA |
+| Sin pruebas de integración | Testcontainers en una tarea `integrationTest` aparte | Concurrencia y migraciones contra PostgreSQL real sin exigir Docker al build |
+| `XSSFWorkbook` | `SXSSFWorkbook` (streaming) | Excel de un año: de 5,9 s a 2,4 s y menos memoria |
 | `autoSizeColumn` de POI | Ancho de columna calculado por longitud del texto | Evita depender de fuentes AWT en servidores sin entorno gráfico |

@@ -58,7 +58,11 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
         if (token == null || !jwtService.validateToken(token)) {
             throw new AccessDeniedException("Token inválido o ausente en la conexión WebSocket.");
         }
-        accessor.setUser(jwtAuthenticationFilter.buildAuthentication(token));
+        Authentication authentication = jwtAuthenticationFilter.buildAuthentication(token);
+        if (authentication == null) {
+            throw new AccessDeniedException("Usuario inactivo o sin roles vigentes.");
+        }
+        accessor.setUser(authentication);
     }
 
     private void authorizeSubscription(StompHeaderAccessor accessor) {

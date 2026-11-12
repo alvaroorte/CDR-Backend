@@ -74,6 +74,15 @@ class WebSocketAuthInterceptorTest {
     }
 
     @Test
+    void connect_rejects_whenUserDeactivatedAfterTokenWasIssued() {
+        when(jwtService.extractBearer("Bearer abc")).thenReturn("abc");
+        when(jwtService.validateToken("abc")).thenReturn(true);
+        when(jwtAuthenticationFilter.buildAuthentication("abc")).thenReturn(null);
+
+        assertThatThrownBy(() -> interceptor.preSend(connect("Bearer abc"), channel)).isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
     void connect_rejects_whenTokenMissingOrInvalid() {
         assertThatThrownBy(() -> interceptor.preSend(connect(null), channel)).isInstanceOf(AccessDeniedException.class);
 

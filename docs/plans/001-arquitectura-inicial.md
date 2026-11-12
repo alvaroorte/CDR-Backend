@@ -542,3 +542,24 @@ Implementación de la Etapa 6 (sin migración):
 - Definiciones: Bruto = Σ subtotal, Neto = Σ total, Pagado = pagos PAID, Devuelto = pagos REFUNDED (pedidos cancelados);
   el importe por producto es la suma de líneas **antes** del descuento general (no se reparte por línea).
 - Cajas del reporte: las abiertas en el rango (fecha de `opened_at`); arqueo en null si siguen abiertas.
+
+### Decisiones resueltas en la Etapa 7 (2026-11-11)
+
+| # | Decisión |
+|---|---|
+| 8 | **Testcontainers** para concurrencia y migraciones (tarea `integrationTest` aparte; requiere Docker) |
+| 16 | **Solo dos entornos: dev (localhost) y prod.** URL de prod y empaquetado aún sin definir: el frontend de prod usa `/cdr/` (mismo dominio) |
+| — | Alcance: concurrencia y migraciones, seguridad, índices y rendimiento, navegador/tablet y preparación de prod |
+
+Resultados de la Etapa 7:
+- **Seguridad:** el JWT ya no es fuente de roles: cada petición (y cada STOMP CONNECT) valida que el usuario siga activo y
+  carga sus roles vigentes; antes un ADMIN desactivado conservaba acceso total hasta 12 h. Prod toma la IP real detrás del
+  proxy (`forward-headers-strategy=native`) para que el límite de intentos no bloquee a todos, y no expone detalles de error.
+  Frontend: quitados pipes sin uso que saltaban el sanitizador de Angular. `npm audit`: 0 vulnerabilidades en producción
+  (16 moderadas solo en herramientas de build).
+- **Rendimiento** (≈110 mil pedidos, 1 año): tablero, mesas, historiales y detalles 12–80 ms; reportes de un mes 0,1–0,2 s;
+  de un año 0,4–1,7 s (lectura completa; un índice no ayuda). **Sin migración V8.** Excel con SXSSF: 5,9 s → 2,4 s.
+- **UI** (Chrome headless, escritorio/iPad/Android/teléfono): sin errores de consola ni HTTP; corregidos estados técnicos
+  visibles, cocina en 2 columnas en tablet horizontal, menú del ADMIN en dos filas, desborde en tablet vertical y formato de %.
+- **Pendiente:** ejecutar `integrationTest` (Docker Desktop no arranca en el equipo de desarrollo: WSL sin distribución),
+  URL de prod, empaquetado (Docker o no) y logo.

@@ -54,6 +54,10 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testImplementation 'org.mockito:mockito-junit-jupiter'
+	// Etapa 7 (decisión aprobada): pruebas de integración con PostgreSQL real desechable (Testcontainers).
+	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+	testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+	testImplementation 'org.testcontainers:testcontainers-postgresql'
 	testAnnotationProcessor 'org.projectlombok:lombok'
 	testCompileOnly 'org.projectlombok:lombok'
 }
@@ -62,6 +66,22 @@ tasks.named("bootJar") {
 	mainClass = 'bo.cdr.app.AppApplication'
 }
 
+// Tests unitarios: no necesitan Docker ni base de datos (los usa también el build de la imagen).
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		excludeTags 'integration'
+	}
+}
+
+// Tests de integración (@Tag("integration")): PostgreSQL 15 en Docker vía Testcontainers.
+// Requieren Docker Desktop encendido:  .\gradlew.bat integrationTest
+tasks.register('integrationTest', Test) {
+	description = 'Pruebas de integración con PostgreSQL real (Testcontainers).'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'integration'
+	}
+	shouldRunAfter tasks.named('test')
 }

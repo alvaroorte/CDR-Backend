@@ -35,6 +35,15 @@ public interface UserRoleRepository extends GenericRepository<UserRole, Integer>
     @Query("SELECT ur FROM UserRole ur JOIN FETCH ur.role r WHERE ur.user = :user AND r.active = true")
     List<UserRole> findByUser(@Param("user") UserApp user);
 
+    /**
+     * Roles vigentes de un usuario activo (vacío si el usuario está inactivo o no existe). Se consulta
+     * en cada petición autenticada: desactivar un usuario o quitarle un rol surte efecto de inmediato,
+     * sin esperar a que caduque su JWT (Etapa 7).
+     */
+    @Query("SELECT r.code FROM UserRole ur JOIN ur.role r JOIN ur.user u " +
+            " WHERE u.id = :userId AND u.active = true AND r.active = true ")
+    List<String> findActiveRoleCodesOfActiveUser(@Param("userId") Integer userId);
+
     boolean existsByUserAndRole(UserApp userApp, Role role);
 
     Optional<UserRole> findByUserAndRole(UserApp user, Role role);
